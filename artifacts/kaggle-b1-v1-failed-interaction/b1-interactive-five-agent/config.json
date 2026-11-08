@@ -1,0 +1,95 @@
+{
+  "benchmark": {
+    "action_budget": 8,
+    "agents": [
+      {
+        "agent_id": "G1",
+        "model": "ggml-org/gemma-3-4b-it-GGUF",
+        "role": "solver",
+        "team": "team-1"
+      },
+      {
+        "agent_id": "Q1",
+        "model": "Qwen/Qwen3-4B-GGUF",
+        "role": "solver",
+        "team": "team-1"
+      },
+      {
+        "agent_id": "G2",
+        "model": "ggml-org/gemma-3-4b-it-GGUF",
+        "role": "solver",
+        "team": "team-2"
+      },
+      {
+        "agent_id": "Q2",
+        "model": "Qwen/Qwen3-4B-GGUF",
+        "role": "solver",
+        "team": "team-2"
+      },
+      {
+        "agent_id": "Q3",
+        "model": "Qwen/Qwen3-4B-GGUF",
+        "role": "solver",
+        "team": "team-1"
+      }
+    ],
+    "condition": "B1",
+    "grader": "math_verify",
+    "max_rounds": 3,
+    "perturbation": null,
+    "seed": 20261108,
+    "tasks": [
+      {
+        "answer": "9",
+        "problem": "How many positive whole-number divisors does 196 have?",
+        "task_id": "test/number_theory/572.json"
+      },
+      {
+        "answer": "27",
+        "problem": "What is the smallest positive perfect cube that can be written as the sum of three consecutive integers?",
+        "task_id": "test/number_theory/515.json"
+      },
+      {
+        "answer": "90",
+        "problem": "The set of points (x,y,z) satisfying 2x = 3y = -z is a line. The set satisfying 6x = -y = -4z is another line. Find the angle between these lines, in degrees.",
+        "task_id": "test/precalculus/927.json"
+      },
+      {
+        "answer": "4",
+        "problem": "How many distinct values can be obtained from 2*3*4*5+1 by inserting parentheses without rearranging terms?",
+        "task_id": "test/prealgebra/1139.json"
+      },
+      {
+        "answer": "2220",
+        "problem": "What is the least positive integer multiple of 30 that can be written with only the digits 0 and 2?",
+        "task_id": "test/number_theory/1032.json"
+      }
+    ]
+  },
+  "dataset": {
+    "manifest": "configs/math500-subset.json",
+    "name": "HuggingFaceH4/MATH-500",
+    "revision": "2343f79",
+    "selection": "fixed five-task Kaggle validation subset",
+    "task_ids": [
+      "test/number_theory/572.json",
+      "test/number_theory/515.json",
+      "test/precalculus/927.json",
+      "test/prealgebra/1139.json",
+      "test/number_theory/1032.json"
+    ]
+  },
+  "inference": {
+    "answer_grader": "math_verify",
+    "backend": "llama-cpp-python",
+    "backend_version": "0.3.28",
+    "cuda_wheel": "cu130",
+    "max_concurrent_inference": 1,
+    "max_tokens": 2048,
+    "quantization": "Q4_K_M",
+    "scheduler": "sequential",
+    "temperature": 0.6,
+    "top_k": 20,
+    "top_p": 0.95
+  }
+}

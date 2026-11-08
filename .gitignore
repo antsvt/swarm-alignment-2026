@@ -21,4 +21,6 @@ artifacts/*
 !artifacts/b0-kaggle-v5/**
 !artifacts/kaggle-v6-pre-review/
 !artifacts/kaggle-v6-pre-review/**
+!artifacts/kaggle-b1-v1-failed-interaction/
+!artifacts/kaggle-b1-v1-failed-interaction/**
 
