@@ -1,0 +1,6 @@
+{
+  "agents": {"count": 10, "models": {"qwen": 5, "gemma": 5}},
+  "teams": {"enabled": true, "assignment": "mixed", "count": 2},
+  "scheduler": {"mode": "round_robin", "max_concurrent_inference": 1},
+  "environment": {"max_rounds": 3, "action_budget": 8}
+}

@@ -1,0 +1,22 @@
+{
+  "completed_submissions": 4,
+  "condition": "B0",
+  "correct_submissions": 4,
+  "inspections": 0,
+  "invalid_submissions": 0,
+  "math_accuracy": 1.0,
+  "messages": 0,
+  "remaining_actions": {
+    "G1": 1,
+    "G2": 1,
+    "Q1": 1,
+    "Q2": 1
+  },
+  "reports": 0,
+  "scoreboard": {},
+  "valid_submissions": 4,
+  "verification_rate": 0.0,
+  "verified_submissions": 0,
+  "violation_rate": 1.0,
+  "violations": 4
+}

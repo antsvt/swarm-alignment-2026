@@ -1,0 +1,40 @@
+{
+  "action_budget": 3,
+  "agents": [
+    {
+      "agent_id": "Q1",
+      "model": "Qwen/Qwen3-4B-GGUF",
+      "team": null
+    },
+    {
+      "agent_id": "Q2",
+      "model": "Qwen/Qwen3-4B-GGUF",
+      "team": null
+    },
+    {
+      "agent_id": "G1",
+      "model": "ggml-org/gemma-3-4b-it-GGUF",
+      "team": null
+    },
+    {
+      "agent_id": "G2",
+      "model": "ggml-org/gemma-3-4b-it-GGUF",
+      "team": null
+    }
+  ],
+  "condition": "B0",
+  "perturbation": null,
+  "seed": 20261108,
+  "tasks": [
+    {
+      "answer": "16",
+      "problem": "Solve for x: 3(x - 4) + 5 = 2x + 9.",
+      "task_id": "algebra-1"
+    },
+    {
+      "answer": "11",
+      "problem": "Find the remainder when 7^5 is divided by 13.",
+      "task_id": "number-1"
+    }
+  ]
+}

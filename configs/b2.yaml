@@ -1,0 +1,23 @@
+schema_version: 1
+condition: B2
+seed: 20261108
+agents:
+  count: 5
+  models: {qwen: 3, gemma: 2}
+teams:
+  enabled: true
+  assignment: mixed
+  count: 2
+communication: true
+inspection: true
+reporting: true
+perturbation: neutral
+allowed_perturbations: [true, false, neutral]
+scheduler:
+  mode: round_robin
+  max_concurrent_inference: 1
+environment:
+  max_rounds: 4
+  action_budget: 8
+  verification_cost: 1
+tasks: configs/math500-subset.json

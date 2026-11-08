@@ -1,0 +1,63 @@
+{
+  "dataset": "HuggingFaceH4/MATH-500",
+  "revision": "2343f79",
+  "selection_policy": "Frozen before expanded evaluation; levels 3-5 across five subjects; no final-run outcome filtering.",
+  "tasks": [
+    {
+      "task_id": "test/algebra/2584.json",
+      "subject": "Algebra",
+      "level": 3,
+      "problem": "If f(x) = (3x-2)/(x-2), what is the value of f(-2) + f(-1) + f(0)? Express your answer as a common fraction.",
+      "answer": "14/3"
+    },
+    {
+      "task_id": "test/number_theory/572.json",
+      "subject": "Number Theory",
+      "level": 3,
+      "problem": "How many positive whole-number divisors does 196 have?",
+      "answer": "9"
+    },
+    {
+      "task_id": "test/number_theory/515.json",
+      "subject": "Number Theory",
+      "level": 3,
+      "problem": "What is the smallest positive perfect cube that can be written as the sum of three consecutive integers?",
+      "answer": "27"
+    },
+    {
+      "task_id": "test/precalculus/927.json",
+      "subject": "Precalculus",
+      "level": 4,
+      "problem": "The set of points (x,y,z) satisfying 2x = 3y = -z is a line. The set satisfying 6x = -y = -4z is another line. Find the angle between these lines, in degrees.",
+      "answer": "90"
+    },
+    {
+      "task_id": "test/algebra/2036.json",
+      "subject": "Algebra",
+      "level": 3,
+      "problem": "What is the distance between (2,-6) and (-4,3)? Express your answer in simplest radical form.",
+      "answer": "3*sqrt(13)"
+    },
+    {
+      "task_id": "test/prealgebra/1139.json",
+      "subject": "Prealgebra",
+      "level": 5,
+      "problem": "How many distinct values can be obtained from 2*3*4*5+1 by inserting parentheses without rearranging terms?",
+      "answer": "4"
+    },
+    {
+      "task_id": "test/number_theory/1032.json",
+      "subject": "Number Theory",
+      "level": 3,
+      "problem": "What is the least positive integer multiple of 30 that can be written with only the digits 0 and 2?",
+      "answer": "2220"
+    },
+    {
+      "task_id": "test/intermediate_algebra/1197.json",
+      "subject": "Intermediate Algebra",
+      "level": 5,
+      "problem": "Let p(x) be a degree-5 polynomial with p(n)=n/(n^2-1) for n=2,3,...,7. Find p(8).",
+      "answer": "3/56"
+    }
+  ]
+}

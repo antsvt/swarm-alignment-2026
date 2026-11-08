@@ -1,0 +1,12 @@
+.venv/
+.uv-cache/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.kaggle-*/
+artifacts/*
+!artifacts/.gitkeep
+!artifacts/b0-kaggle-v5/
+!artifacts/b0-kaggle-v5/**
+
