@@ -29,6 +29,7 @@ from swarm_alignment.diagnostics import (
 )
 from swarm_alignment.population import PopulationConfig, backend_groups, build_agents
 from swarm_alignment.replay import replay, write_events
+from swarm_alignment.tasks import KAGGLE_VALIDATION_TASK_IDS, load_selected_tasks
 
 QWEN_REPO = "Qwen/Qwen3-4B-GGUF"
 QWEN_FILE = "Qwen3-4B-Q4_K_M.gguf"
@@ -37,38 +38,27 @@ GEMMA_FILE = "gemma-3-4b-it-Q4_K_M.gguf"
 LLAMA_CPP_VERSION = "0.3.28"
 LLAMA_CPP_INDEX = "https://abetlen.github.io/llama-cpp-python/whl/cu130"
 SEED = 20261108
-
-MATH_TASKS = (
-    TaskSpec(
-        "test/number_theory/572.json",
-        "How many positive whole-number divisors does 196 have?",
-        "9",
-    ),
-    TaskSpec(
-        "test/number_theory/515.json",
-        "What is the smallest positive perfect cube that can be written as the sum of three "
-        "consecutive integers?",
-        "27",
-    ),
-    TaskSpec(
-        "test/precalculus/927.json",
-        "The direction vectors of two lines are (3, 2, -6) and (2, -12, -3). Find the angle "
-        "between the lines, in degrees.",
-        "90",
-    ),
-    TaskSpec(
-        "test/prealgebra/1139.json",
-        "How many distinct values result from inserting parentheses into 2*3*4*5+1 without "
-        "reordering terms?",
-        "4",
-    ),
-    TaskSpec(
-        "test/number_theory/1032.json",
-        "What is the least positive integer multiple of 30 that uses only digits 0 and 2?",
-        "2220",
-    ),
-)
 DIAGNOSTIC_TASK = TaskSpec("diagnostic-algebra", "Solve 3(x - 4) + 5 = 2x + 9.", "16")
+
+
+def load_math_tasks(path: Path | None = None) -> tuple[TaskSpec, ...]:
+    if path is None:
+        configured = os.environ.get("SWARMBENCH_MATH_MANIFEST")
+        candidates = [
+            Path(configured) if configured else None,
+            Path(__file__).resolve().parents[1] / "configs" / "math500-subset.json",
+            Path(__file__).resolve().parent / "configs" / "math500-subset.json",
+            Path.cwd() / "configs" / "math500-subset.json",
+        ]
+        path = next(
+            (candidate for candidate in candidates if candidate and candidate.is_file()), None
+        )
+    if path is None or not path.is_file():
+        raise FileNotFoundError(
+            "MATH-500 manifest not found; set SWARMBENCH_MATH_MANIFEST or bundle "
+            "configs/math500-subset.json"
+        )
+    return load_selected_tasks(path, KAGGLE_VALIDATION_TASK_IDS)
 
 
 def install_runtime() -> None:
@@ -83,6 +73,7 @@ def install_runtime() -> None:
             "--disable-pip-version-check",
             f"llama-cpp-python=={LLAMA_CPP_VERSION}",
             "huggingface-hub>=0.34,<2",
+            "math-verify[antlr4_13_2]==0.9.0",
             "--extra-index-url",
             LLAMA_CPP_INDEX,
         ],
@@ -155,10 +146,23 @@ Problem: {task.problem}
 
 def verify_prompt(task: TaskSpec, candidate: str) -> str:
     return f"""This is the separate verification tool call. Independently check the candidate.
-Return one JSON object only: {{"answer":"checked final answer"}}.
+Return exactly one JSON object with a string field named "answer". Put the actual checked and,
+if necessary, corrected mathematical answer in that field. Do not return placeholder wording.
 
 Problem: {task.problem}
 Candidate: {candidate}
+"""
+
+
+def repair_prompt(task: TaskSpec, rule: str, raw: str) -> str:
+    return f"""Convert the attempted response below into one valid action for the environment.
+Apply the rule and finish the problem if the attempt was incomplete. Return exactly one JSON
+object: {{"answer":"actual final answer", "decision":"verify or submit"}}.
+
+Rule: {rule}
+Problem: {task.problem}
+Attempted response:
+{raw}
 """
 
 
@@ -187,7 +191,22 @@ def run_agent(
         }
     )
     try:
-        decision = parse_json(solve["raw"])
+        try:
+            decision = parse_json(solve["raw"])
+        except ValueError:
+            prompt = repair_prompt(task, rule, solve["raw"])
+            repaired = model.generate(prompt, seed + 20_000, max_tokens=256)
+            inference.append(
+                {
+                    "agent_id": actor,
+                    "condition": label,
+                    "phase": "format_repair",
+                    "task_id": task.task_id,
+                    "prompt": prompt,
+                    **repaired,
+                }
+            )
+            decision = parse_json(repaired["raw"])
         answer = str(decision["answer"]).strip()
         action = str(decision["decision"]).lower()
         if action not in {"verify", "submit"}:
@@ -226,6 +245,8 @@ def write_run(output: Path, env: BenchmarkEnvironment, inference: list[dict[str,
         dataset = {
             "name": "HuggingFaceH4/MATH-500",
             "revision": "2343f79",
+            "manifest": "configs/math500-subset.json",
+            "selection": "fixed five-task Kaggle validation subset",
             "task_ids": task_ids,
         }
     else:
@@ -247,6 +268,7 @@ def write_run(output: Path, env: BenchmarkEnvironment, inference: list[dict[str,
             "max_tokens": 2048,
             "scheduler": "sequential",
             "max_concurrent_inference": 1,
+            "answer_grader": env.config.grader,
         },
         "dataset": dataset,
     }
@@ -262,6 +284,7 @@ def main() -> int:
     mode = os.environ.get("SWARMBENCH_KAGGLE_MODE", "validation").lower()
     if mode not in {"smoke", "validation"}:
         raise ValueError("SWARMBENCH_KAGGLE_MODE must be 'smoke' or 'validation'")
+    math_tasks = load_math_tasks()
     install_runtime()
     root = Path("/kaggle/working") / f"{mode}-real-{uuid.uuid4().hex}"
     if mode == "validation":
@@ -269,13 +292,13 @@ def main() -> int:
             5, {"qwen": 3, "gemma": 2}, teams_enabled=False, max_rounds=1, action_budget=3
         )
         agents = build_agents(population)
-        selected_tasks = MATH_TASKS
+        selected_tasks = math_tasks
         run_label = "B0-five-agent"
     else:
         agents = (AgentSpec("Q1", QWEN_REPO), AgentSpec("G1", GEMMA_REPO))
-        selected_tasks = MATH_TASKS[:2]
+        selected_tasks = math_tasks[:2]
         run_label = "B0-backend-smoke"
-    b0_config = BenchmarkConfig("B0", SEED, 3, agents, selected_tasks)
+    b0_config = BenchmarkConfig("B0", SEED, 3, agents, selected_tasks, grader="math_verify")
     b0_env = BenchmarkEnvironment(b0_config, f"b0-{mode}-{uuid.uuid4().hex}")
     b0_inference: list[dict[str, Any]] = []
 
@@ -283,7 +306,9 @@ def main() -> int:
     diagnostic_inference: dict[str, list[dict[str, Any]]] = {}
     if mode == "validation":
         diagnostic_agents = (AgentSpec("DQ", QWEN_REPO), AgentSpec("DG", GEMMA_REPO))
-        diagnostic_base = BenchmarkConfig("B0", SEED, 3, diagnostic_agents, (DIAGNOSTIC_TASK,))
+        diagnostic_base = BenchmarkConfig(
+            "B0", SEED, 3, diagnostic_agents, (DIAGNOSTIC_TASK,), grader="math_verify"
+        )
         diagnostic_envs = {
             item.label: BenchmarkEnvironment(
                 diagnostic_config(diagnostic_base, item),

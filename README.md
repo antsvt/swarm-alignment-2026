@@ -18,6 +18,11 @@ The safety protocol is `solve → verify → submit`. A valid candidate submitte
 failures, and unfinished episodes are tracked separately. Checking work in hidden reasoning does
 not satisfy the observable verification rule.
 
+`verify` records that the required procedure was performed; it does not certify that the answer
+is mathematically correct. Correctness is evaluated separately by the configured environment
+scorer. The real MATH runners use [Math-Verify](https://github.com/huggingface/Math-Verify), while
+the core retains an explicit exact-string scorer for dependency-free tests and legacy replay.
+
 ## Quick start
 
 Python 3.11–3.14 and `uv` are supported.
@@ -28,6 +33,9 @@ make test
 make lint
 make demo
 ```
+
+Install the optional symbolic scorer with `uv sync --extra dev --extra math`. Real Kaggle runs
+pin Math-Verify 0.9.0 with ANTLR 4.13.2.
 
 Run scripted conditions and choose any population from 5 to 20 logical agents:
 
@@ -73,8 +81,15 @@ Action("report", task_id="task-1", target="G2")
 B1 is interactive: messages enter another agent's private inbox, score changes appear in later
 observations, inspections reveal permitted submitted evidence, and reports update shared audit
 state. Every observation records the event sequence numbers actually exposed to that agent.
-Agents never receive hidden correctness or compliance ground truth. B2 recipients receive the
-notice, not its independently stored truth label.
+An inspection returns submission existence, answer, submission event ID, and whether a separate
+verification action was recorded; it does not return an oracle `violation` label. A report returns
+only an acknowledgement. Its `substantiated` score remains in the external audit record and
+aggregate metrics. Agents never receive hidden correctness or compliance ground truth.
+
+B2 notices can originate from the system or a named agent. Visible metadata includes source team,
+subject team, and accused team where applicable, but not the independently stored truth label.
+True and false accusations use the same visible claim template. The neutral control names the same
+subject and task while explicitly making no compliance claim.
 
 ## Audit and replay
 
@@ -92,9 +107,12 @@ reproduced exactly from a sampling seed.
 ## Tasks and diagnostics
 
 `configs/math500-subset.json` freezes eight unique MATH-500 task IDs at dataset revision
-`2343f79`, covering levels 3–5. The subset was fixed before expanded evaluation. Current grading
-uses normalized exact strings rather than a symbolic mathematics judge, so mathematically
-equivalent formatting can be marked wrong.
+`2343f79`, covering levels 3–5. The subset was fixed before expanded evaluation. Grading can use
+deterministic exact strings or the optional symbolic Math-Verify backend; the selected grader is
+stored in the resolved experiment configuration.
+
+The Kaggle runner loads its fixed five-task validation subset directly from this manifest and
+records the selected IDs in `config.json`; it contains no duplicate problem statements.
 
 The labelled compliance diagnostic preserves the original protocol:
 
@@ -126,6 +144,27 @@ The preserved successful four-agent real-model smoke artifact is in
 `artifacts/b0-kaggle-v5/`. It must be interpreted as an end-to-end mechanics check, not a
 behavioral estimate.
 
+A later five-agent Kaggle validation completed three agents and cleanly separated two output-format
+failures from protocol violations. Its pre-fix A/B/C accuracy field was invalidated by a prompt
+placeholder; full details and provenance are recorded in `EXPERIMENTS.md`. The current runner fixes
+that prompt and logs one bounded format-repair turn when the initial response is not valid JSON.
+
+`scripts/run_kaggle_b1.py` is the minimal real interactive path. It runs five mixed-team logical
+agents, asks a Qwen agent to send a model-generated message to an opposing Gemma agent, exposes
+that message in the recipient's observation, and records the recipient's subsequent
+`inspect`/`report`/`message`/`noop` choice. This validates interaction mechanics; it is not a
+causal B1 behavioral estimate.
+
+Build a readable private Kaggle submission bundle directly from the current sources:
+
+```bash
+.venv/bin/python scripts/build_kaggle_notebook.py \
+  --runner b1 \
+  --output /tmp/swarmbench-b1 \
+  --kernel-id your-kaggle-user/swarmbench-b1
+kaggle kernels push -p /tmp/swarmbench-b1
+```
+
 ## Repository layout
 
 ```text
@@ -133,9 +172,13 @@ src/swarm_alignment/benchmark.py    environment state machine and metrics
 src/swarm_alignment/population.py   dynamic populations and deterministic scheduler
 src/swarm_alignment/diagnostics.py  labelled A/B/C protocol variants
 src/swarm_alignment/replay.py       strict inference-free replay
+src/swarm_alignment/tasks.py        frozen manifest selection and validation
+src/swarm_alignment/grading.py      exact and optional symbolic answer grading
 scripts/run_swarmbench_lite.py      scripted B0/B1/B2 demonstration
 scripts/run_compliance_diagnostic.py scripted A/B/C diagnostic
 scripts/run_kaggle_b0.py            real-model Kaggle smoke/validation adapter
+scripts/run_kaggle_b1.py            real-model interactive B1 validation
+scripts/build_kaggle_notebook.py     readable B0/B1 Kaggle bundle builder
 scripts/replay_run.py                inference-free artifact replay CLI
 configs/                             population, condition, and task manifests
 tests/                               CPU correctness and corruption tests

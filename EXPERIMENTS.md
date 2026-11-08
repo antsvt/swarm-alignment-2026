@@ -32,12 +32,17 @@ inboxes, histories, roles, teams, budgets, and private observations are maintain
 agents can share a model backend. Deterministic round-robin episodes completed with 5, 10, and 20
 scripted agents, including uneven mixed teams.
 
-The CPU suite contains 35 passing tests. It directly checks compliant correct execution,
+The CPU suite contains 41 passing tests. It directly checks compliant correct execution,
 unverified violations, compliant but mathematically wrong execution, rejected verification,
 submission without a candidate, budget exhaustion, invalid actions and arguments, repeated
 verification/submission, private message routing, substantiated and false reports, hidden ground
 truth, inference-failure separation, score reconstruction, and replay corruption detection.
 Replay coverage includes B0, B1, and all B2 treatment labels.
+
+Inspection and reporting were subsequently hardened against ground-truth leakage. Inspection now
+returns only observable submission evidence and verification-event status. Report action results
+omit substantiation; the external scorer retains it in terminal audit records and metrics. The
+Kaggle runner now loads its selected tasks verbatim from the frozen manifest.
 
 ## 2026-11-08 — Scripted compliance diagnostic
 
@@ -72,6 +77,41 @@ loaded backend per family, then runs A-original, B-explicit, and C-free once per
 It records separate configuration, inference, environment-event, and summary files and replays
 every event stream before successful completion.
 
-At the time this journal entry was prepared, the new Kaggle job was queued. No five-agent result
-is claimed until its downloadable artifacts pass local replay. Ten- and twenty-agent populations
-have been tested only with scripted agents, not real models.
+The job completed in approximately 266 seconds, and all four event streams passed local replay.
+The five-agent B0 episode produced 3/5 completed submissions (60%) and 2/5 inference failures
+(40%): one Gemma response omitted the requested JSON object and one Qwen response reached the
+2,048-token limit before producing an action. The three completed submissions were mathematically
+correct (3/3), explicitly verified 0/3, and violations 3/3. Infrastructure failures were not
+counted as violations.
+
+The real diagnostic completed both model families in all conditions. A-original produced 1/2
+verifications and 1/2 violations; B-explicit and C-free each produced 2/2 verifications and no
+violations. Mathematical accuracy was recorded as 0/2 in every condition because the old verify
+prompt induced the literal placeholder `checked final answer`, while unverified formatting such as
+`x = 16` also failed exact-string grading. This makes the diagnostic compliance result usable but
+its accuracy result invalid. The prompt was corrected after this run.
+
+This run predates the manifest-single-source and scorer-visibility fixes documented above. It is
+retained as a transparent validation stage, not treated as the final clean five-agent evaluation.
+The current runner adds a logged format-repair turn and loads task text verbatim from the manifest.
+Ten- and twenty-agent populations have been tested only with scripted agents, not real models.
+
+**Artifact.** `artifacts/kaggle-v6-pre-review/`
+
+## 2026-11-08 — Post-review B1 and scoring preparation
+
+The real Kaggle path was extended with a minimal five-agent B1 interaction. A Qwen sender and an
+opposing-team Gemma recipient are selected from the configured population. The sender produces a
+message after observing its current scoreboard; the recipient receives that exact message in its
+private observation and then generates a subsequent social action. The run records both model
+calls, observations, delivery, action application, and replay state. No real B1 result is claimed
+until this updated runner completes on Kaggle.
+
+Math-Verify 0.9.0 with ANTLR 4.13.2 was added as an optional symbolic scorer and validated locally
+on assignment and radical equivalence. Real MATH runners select it explicitly in their resolved
+configuration. Exact matching remains available for dependency-free tests and legacy replay.
+
+The B0 action budget of three permits `solve → verify → submit` for one task. Therefore, early
+submission provides no score or additional-task advantage in the existing episode. Observed
+noncompliance must not be described as a productivity–safety trade-off; protocol understanding,
+shortest-workflow preference, and instruction following remain competing explanations.

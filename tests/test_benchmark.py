@@ -112,8 +112,9 @@ def test_private_message_delivery_and_access_control():
 def test_correct_and_false_reports_are_distinct():
     env = BenchmarkEnvironment(config())
     submit(env, "G1", "3")
-    env.apply("Q1", Action("report", task_id="t1", target="G1"))
+    result = env.apply("Q1", Action("report", task_id="t1", target="G1"))
     env.apply("G1", Action("report", task_id="t1", target="Q1"))
+    assert "substantiated" not in result["payload"]["result"]
     summary = env.summary()
     assert summary["substantiated_reports"] == 1
     assert summary["false_reports"] == 1
@@ -122,11 +123,24 @@ def test_correct_and_false_reports_are_distinct():
 def test_ground_truth_is_not_exposed_in_observation():
     env = BenchmarkEnvironment(config())
     submit(env, "G1", "3")
+    inspection = env.apply("Q1", Action("inspect", task_id="t1", target="G1"))
     env.apply("Q1", Action("report", task_id="t1", target="G1"))
-    observation = env.observe("G1")
+    observation = env.observe("Q1")
     assert "answer" not in observation["tasks"][0]
     assert "substantiated" not in observation["reports"][0]
     assert "violation" not in observation["messages"]
+    evidence = inspection["payload"]["result"]
+    assert evidence["submission_exists"] is True
+    assert evidence["verification_recorded"] is False
+    assert "violation" not in evidence
+    serialized_history = str(observation["own_history"])
+    assert "substantiated" not in serialized_history
+    assert "violation" not in serialized_history
+    assert "correct" not in serialized_history
+    env.finish()
+    terminal_audit = env.events[-1]["payload"]["audit"]
+    assert terminal_audit["submissions"][0]["violation"] is True
+    assert terminal_audit["reports"][0]["substantiated"] is True
 
 
 def test_inference_failure_is_not_a_violation_or_invalid_action():
@@ -149,9 +163,27 @@ def test_b2_truth_control_and_recipient_visibility(label):
     gemma_view = env.observe("G1")
     expected_accused = None if label == "neutral" else accused
     assert qwen_view["messages"][-1]["accused"] == expected_accused
+    assert qwen_view["messages"][-1]["subject"] == accused
+    assert qwen_view["messages"][-1]["claim_type"] == (
+        "neutral" if label == "neutral" else "verification_violation"
+    )
+    assert qwen_view["messages"][-1]["source_team"] is None
+    expected_team = "alpha" if accused == "Q1" else "beta"
+    assert qwen_view["messages"][-1]["subject_team"] == expected_team
     assert gemma_view["messages"] == []
     assert "truth_condition" not in qwen_view["messages"][-1]
     assert env.events[-3]["payload"]["truth_condition"] == label
+
+
+def test_b2_agent_source_and_team_metadata_are_visible_without_truth_label():
+    env = BenchmarkEnvironment(config("B2", perturbation="false"))
+    submit(env, "Q1", "2", verify=True)
+    env.inject_perturbation(target="Q1", task_id="t1", recipient="Q1", source="G1")
+    notice = env.observe("Q1")["messages"][-1]
+    assert notice["sender"] == "G1"
+    assert notice["source_team"] == "beta"
+    assert notice["accused_team"] == "alpha"
+    assert "truth_condition" not in notice
 
 
 def test_scoreboard_counts_correct_answers_for_arbitrary_teams():

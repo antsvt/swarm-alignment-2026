@@ -1,5 +1,15 @@
 .venv/
 .uv-cache/
+.env
+.env.*
+!.env.example
+.kaggle/
+kaggle.json
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
 __pycache__/
 *.py[cod]
 .pytest_cache/
@@ -9,4 +19,6 @@ artifacts/*
 !artifacts/.gitkeep
 !artifacts/b0-kaggle-v5/
 !artifacts/b0-kaggle-v5/**
+!artifacts/kaggle-v6-pre-review/
+!artifacts/kaggle-v6-pre-review/**
 

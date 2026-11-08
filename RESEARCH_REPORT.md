@@ -8,8 +8,9 @@ budgets, mandatory observable verification, team competition, private messages, 
 reports, controlled safety-related notices, complete event logging, and inference-free replay.
 The environment supports 5–20 logical agents while sharing model weights by family, making it
 practical on commodity 2×T4 cloud GPUs. CPU tests validate environment semantics and populations
-up to 20 scripted agents. A preserved four-agent Qwen3-4B/Gemma 3 4B Kaggle smoke test validates
-the real inference path. The work establishes testbed mechanics; it does not yet establish a
+up to 20 scripted agents. A four-agent Qwen3-4B/Gemma 3 4B Kaggle smoke and an incomplete
+five-agent validation exercise the real inference path. The work establishes testbed mechanics;
+it does not yet establish a
 causal behavioral result about intergroup competition.
 
 ## 2. Motivation
@@ -41,6 +42,9 @@ action. Internal calculation or self-checking in model text is not observable ve
 Submitting a valid candidate without a successful verify action is therefore a protocol
 violation, regardless of mathematical correctness.
 
+Verification is a procedural event, not a mathematical oracle. The independent scorer determines
+answer correctness only at submission, so a verified answer may still be wrong.
+
 The evaluator keeps six outcomes separate: protocol violation, mathematical error, invalid
 action, inference failure, incomplete episode, and successful compliant execution. A rejected
 action or backend failure is never silently converted into a safety violation.
@@ -48,6 +52,9 @@ action or backend failure is never silently converted into a safety violation.
 Three baselines are implemented. B0 is independent work without teams or social tools. B1 adds
 team competition, messages, inspections, reports, and a shared scoreboard. B2 adds a controlled
 true accusation, false accusation, or neutral notice whose truth is known only to the environment.
+Inspection exposes observable submission evidence and verification-event status, not the derived
+violation label. Report substantiation is written to the external audit state but omitted from the
+reporter's action result and later observations.
 
 ## 5. Scalable Logical-Agent Scheduling
 
@@ -87,6 +94,10 @@ They cover levels 3–5 and five subject labels. The current evaluator uses norm
 answers rather than symbolic equivalence. The subset has not yet been independently calibrated to
 equal difficulty for both model families.
 
+The manifest is the only source of task text and reference answers. The Kaggle validation selects
+five recorded IDs from it at startup and fails before model installation if the manifest is absent
+or inconsistent.
+
 The compliance diagnostic has three explicitly labelled conditions. A-original preserves the
 original wording and verification cost. B-explicit states that internal checking is insufficient
 and keeps the cost. C-free uses the explicit wording and removes only the simulated budget cost of
@@ -94,7 +105,7 @@ verification.
 
 ## 8. Validation Results
 
-Thirty-five CPU tests pass. Beyond digest equality, tests assert the intended scoring semantics:
+Forty-one CPU tests pass. Beyond digest equality, tests assert the intended scoring semantics:
 correct compliant submission, unverified violation, verified mathematical error, invalid verify,
 submit without solve, exhausted budget, invalid tool arguments, repeated actions, private message
 access, substantiated and false reports, hidden ground truth, failure separation, and scoreboard
@@ -111,18 +122,37 @@ correct submissions, 0/4 explicit verifications, and 4/4 protocol violations. Al
 some textual self-checking, demonstrating why observable tool use must remain distinct from
 inferred intention. Replay matched the recorded summary and digest.
 
+A subsequent five-agent Kaggle validation completed 3/5 agents and recorded two inference
+failures separately: one response omitted JSON and one exhausted its generation limit. The three
+completed answers were correct, unverified, and therefore violations. A real A/B/C diagnostic
+showed verification compliance of 1/2, 2/2, and 2/2 respectively, but an old placeholder in the
+verification prompt invalidated its mathematical-accuracy field. All event streams replayed
+locally. The prompt, format-repair path, manifest loading, and scorer visibility were corrected
+after the run; the trace is a transparent validation stage rather than a clean behavioral result.
+
+The updated real MATH configuration uses Math-Verify 0.9.0 for symbolic answer equivalence and
+records the selected grader. Exact-string grading remains an explicit dependency-free option and
+is used to replay older traces.
+
 ## 9. B0/B1/B2 Behavioral Demonstration
 
-B0 has been exercised with both real model families in the preserved four-agent smoke. This is
-only an end-to-end validation because it used two easy synthetic tasks and one decision per
-agent.
+B0 has been exercised with both real model families in the preserved four-agent smoke and the
+incomplete five-agent validation. These are end-to-end checks, not behavioral estimates.
 
 Scripted B1 demonstrates genuine interaction rather than independent episodes with a cosmetic
 scoreboard: a private message changes another inbox, inspections expose permitted submitted
 evidence, reports update shared audit state, and subsequent observations contain the relevant
 event sequence numbers and scores.
 
-Scripted B2 demonstrates independently controlled true, false, and neutral notices. The metrics
+The post-review Kaggle runner implements the corresponding minimal real B1 path: a Qwen sender
+generates a message for an opposing-team Gemma recipient, the recipient receives it in a new
+observation, and then generates a social action. This path is implemented but is not counted as a
+real result until its remote event stream completes and passes local replay.
+
+Scripted B2 demonstrates independently controlled true, false, and neutral notices. A notice may
+be attributed to the system or a named agent, and records source, source team, subject, and subject
+team without exposing truth. True and false claims share a template; the neutral condition names
+the same subject and task without asserting a violation. The metrics
 record inspection rate, reporting rate, false-reporting rate, verification compliance, subsequent
 violations, and completion from observable actions. Scripted response choices were deliberately
 constructed to exercise those metrics and are not evidence of manipulation or intergroup bias.
@@ -130,22 +160,31 @@ constructed to exercise those metrics and are not evidence of manipulation or in
 No statistically meaningful B0/B1/B2 model comparison has been completed. Selective enforcement
 and retaliatory violations remain hypotheses.
 
+The current B0 budget allows all three required actions for one task. Skipping verification does
+not unlock another scored task and therefore cannot be interpreted as a demonstrated preference
+for productivity over safety. The observation is protocol noncompliance; shortest-workflow bias,
+instruction ambiguity, and instruction-following failure remain plausible explanations. The A/B/C
+diagnostic is designed to separate some of these mechanisms but is not conclusive at its current
+sample size.
+
 ## 10. Limitations
 
 The principal limits are small models, one two-GPU runtime, sequential inference, short episodes,
-exact-string mathematics grading, and an uncalibrated task subset. Current real evidence is a
-four-agent smoke; ten and twenty agents are validated only with scripted policies. Team-label
+limited symbolic-grader calibration, and an uncalibrated task subset. Current real evidence is a
+four-agent smoke plus an incomplete five-agent run; ten and twenty agents are validated only with
+scripted policies. Team-label
 permutations, repeated seeds, confidence intervals, timeouts, and a full 8-task × 3-repetition
 pilot remain future work.
 
 The environment does not provide hardened sandbox isolation. Malicious-model containment is not
-evaluated. B2 currently demonstrates one controlled notice pattern and does not cover a broad
-space of persuasion or collusion strategies. Small samples must not be used to rank model safety
+evaluated. B2 currently demonstrates a parameterized but narrow notice pattern and does not cover
+a broad space of persuasion or collusion strategies. A neutral non-accusation cannot be perfectly
+semantically identical to an accusation. Small samples must not be used to rank model safety
 or infer general properties of LLM swarms.
 
 ## 11. Reproducibility
 
-CPU validation is reproduced with `uv sync --extra dev`, `make test`, and `make lint`. Scripted
+CPU validation is reproduced with `uv sync --extra dev --extra math`, `make test`, and `make lint`. Scripted
 conditions run through `scripts/run_swarmbench_lite.py`; the A/B/C manipulation runs through
 `scripts/run_compliance_diagnostic.py`. Population and task manifests are versioned in `configs/`.
 
@@ -155,6 +194,10 @@ validation selects five B0 agents and the two-model A/B/C diagnostic. Outputs ca
 and replayed locally without checkpoints or inference. Dependency versions, sampling parameters,
 model names, task IDs, and seeds are recorded, but exact stochastic LLM text is not promised to
 recur.
+
+`scripts/run_kaggle_b1.py` uses the same backend and manifest for the minimal real interaction
+validation. It stores the sender and recipient observations and inference separately from the
+authoritative event log.
 
 ## 12. Dual-Use and Ethical Considerations
 

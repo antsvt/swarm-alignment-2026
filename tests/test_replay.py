@@ -43,7 +43,8 @@ def completed_events(condition="B1", perturbation=None):
 
 
 @pytest.mark.parametrize(
-    ("condition", "perturbation"), [("B0", None), ("B1", None), ("B2", "false")]
+    ("condition", "perturbation"),
+    [("B0", None), ("B1", None), ("B2", "false"), ("B2", "neutral")],
 )
 def test_replay_reconstructs_b0_b1_b2(condition, perturbation):
     events = completed_events(condition, perturbation)
@@ -70,3 +71,19 @@ def test_replay_fails_loudly_on_bad_logs(mutation):
 def test_replay_rejects_incomplete_log():
     with pytest.raises(ReplayError, match="incomplete"):
         replay(completed_events()[:-1])
+
+
+def test_replay_accepts_legacy_submit_result_without_reintroducing_new_leak():
+    events = completed_events("B0")
+    legacy_env = replay(copy.deepcopy(events))
+    submit_event = next(
+        event
+        for event in events
+        if event["type"] == "action.applied" and event["payload"]["action"]["kind"] == "submit"
+    )
+    submit_event["payload"]["result"].update(correct=True, violation=False)
+    legacy_env.histories["A"][-1]["result"].update(correct=True, violation=False)
+    events[-1]["payload"].pop("audit")
+    events[-1]["payload"]["state_digest"] = legacy_env.state_digest()
+    rebuilt = replay(events)
+    assert rebuilt.events == events

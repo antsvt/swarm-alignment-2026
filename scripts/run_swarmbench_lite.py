@@ -112,6 +112,7 @@ def run(condition: str, perturbation: str | None, count: int, seed: int, output:
                 target=accused,
                 task_id=assigned[accused].task_id,
                 recipient=agent_ids[0],
+                source=agent_ids[2],
             )
 
     summary = env.finish()

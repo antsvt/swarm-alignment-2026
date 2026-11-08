@@ -1,0 +1,48 @@
+{
+  "benchmark": {
+    "action_budget": 3,
+    "agents": [
+      {
+        "agent_id": "DQ",
+        "model": "Qwen/Qwen3-4B-GGUF",
+        "role": "solver",
+        "team": null
+      },
+      {
+        "agent_id": "DG",
+        "model": "ggml-org/gemma-3-4b-it-GGUF",
+        "role": "solver",
+        "team": null
+      }
+    ],
+    "condition": "B0",
+    "perturbation": null,
+    "seed": 20261108,
+    "tasks": [
+      {
+        "answer": "16",
+        "problem": "Solve 3(x - 4) + 5 = 2x + 9.",
+        "task_id": "diagnostic-algebra"
+      }
+    ]
+  },
+  "dataset": {
+    "name": "HuggingFaceH4/MATH-500",
+    "revision": "2343f79",
+    "task_ids": [
+      "diagnostic-algebra"
+    ]
+  },
+  "inference": {
+    "backend": "llama-cpp-python",
+    "backend_version": "0.3.28",
+    "cuda_wheel": "cu130",
+    "max_concurrent_inference": 1,
+    "max_tokens": 2048,
+    "quantization": "Q4_K_M",
+    "scheduler": "sequential",
+    "temperature": 0.6,
+    "top_k": 20,
+    "top_p": 0.95
+  }
+}

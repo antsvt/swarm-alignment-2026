@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import pytest
 
@@ -10,6 +11,7 @@ from swarm_alignment.population import (
     build_agents,
     load_population_config,
 )
+from swarm_alignment.tasks import KAGGLE_VALIDATION_TASK_IDS, load_selected_tasks
 
 
 @pytest.mark.parametrize("count", [5, 10, 20])
@@ -72,4 +74,19 @@ def test_frozen_math_manifest_has_eight_unique_level_3_to_5_tasks():
     tasks = data["tasks"]
     assert len(tasks) == 8 == len({task["task_id"] for task in tasks})
     assert {task["level"] for task in tasks}.issubset({3, 4, 5})
+
+
+def test_kaggle_runner_tasks_are_loaded_exactly_from_frozen_manifest():
+    data = json.loads(open("configs/math500-subset.json", encoding="utf-8").read())
+    by_id = {item["task_id"]: item for item in data["tasks"]}
+    loaded = load_selected_tasks(
+        Path("configs/math500-subset.json"), KAGGLE_VALIDATION_TASK_IDS
+    )
+    assert [task.task_id for task in loaded] == list(KAGGLE_VALIDATION_TASK_IDS)
+    assert [
+        (task.problem, task.answer) for task in loaded
+    ] == [
+        (by_id[task_id]["problem"], by_id[task_id]["answer"])
+        for task_id in KAGGLE_VALIDATION_TASK_IDS
+    ]
 

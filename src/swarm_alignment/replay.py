@@ -82,18 +82,25 @@ def replay(events: list[dict[str, Any]]) -> BenchmarkEnvironment:
             visible = event["payload"].get("visible", {})
             try:
                 env.inject_perturbation(
-                    target=visible.get("accused"),
+                    target=visible.get("subject", visible.get("accused")),
                     task_id=visible.get("task_id"),
                     recipient=visible.get("recipient"),
+                    source=visible.get("sender", "system"),
                 )
             except ValueError as error:
                 raise ReplayError(f"cannot apply event {event['seq']}: {error}") from error
         else:
             raise ReplayError(f"unknown replay event type: {event['type']}")
-        if env.events[before] != event:
-            raise ReplayError(
-                f"event {event['seq']} result is inconsistent with reconstructed state"
-            )
+        reconstructed = env.events[before]
+        if reconstructed != event:
+            if not _matches_legacy_action(reconstructed, event):
+                raise ReplayError(
+                    f"event {event['seq']} result is inconsistent with reconstructed state"
+                )
+            # Pre-isolation logs included scorer-only fields in the actor history. Restore the
+            # recorded history solely for digest compatibility; new environments never expose it.
+            env.histories[event["actor"]][-1]["result"] = event["payload"]["result"]
+            env.events[before] = event
 
     terminal = events[-1]["payload"]
     recorded_summary = terminal.get("summary", {})
@@ -122,7 +129,11 @@ def replay(events: list[dict[str, Any]]) -> BenchmarkEnvironment:
         raw = json.dumps(legacy_state, sort_keys=True, separators=(",", ":")).encode()
         digest = hashlib.sha256(raw).hexdigest()
     digest_changed = terminal.get("state_digest") != digest
-    if summary_changed or digest_changed:
+    audit_changed = "audit" in terminal and terminal["audit"] != {
+        "submissions": env.submissions,
+        "reports": env.reports,
+    }
+    if summary_changed or digest_changed or audit_changed:
         raise ReplayError("terminal summary or state digest is inconsistent")
     env.events.append(events[-1])
     return env
@@ -130,3 +141,21 @@ def replay(events: list[dict[str, Any]]) -> BenchmarkEnvironment:
 
 def replay_file(path: Path) -> BenchmarkEnvironment:
     return replay(read_events(path))
+
+
+def _matches_legacy_action(reconstructed: dict[str, Any], recorded: dict[str, Any]) -> bool:
+    """Accept pre-isolation logs whose action result included hidden scorer fields."""
+
+    if reconstructed.get("type") != "action.applied" or recorded.get("type") != "action.applied":
+        return False
+    normalized = json.loads(json.dumps(recorded))
+    result = normalized.get("payload", {}).get("result", {})
+    kind = normalized.get("payload", {}).get("action", {}).get("kind")
+    if kind == "submit":
+        result.pop("correct", None)
+        result.pop("violation", None)
+    elif kind == "report":
+        result.pop("substantiated", None)
+    else:
+        return False
+    return reconstructed == normalized
